@@ -1,4 +1,4 @@
-module github.com/Z6dev/Boomtown
+module github.com/Z6dev/Into-The-Hadal
 
 go 1.24.5
 

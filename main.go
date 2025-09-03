@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"image/color"
 
-	"github.com/Z6dev/Boomtown/assets"
-	"github.com/Z6dev/Boomtown/entities"
+	"github.com/Z6dev/Into-The-Hadal/assets"
+	"github.com/Z6dev/Into-The-Hadal/entities"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -53,7 +53,7 @@ func main() {
 				X:   100,
 				Y:   100,
 				W:   64,
-				H:   32,
+				H:   31,
 				Img: playerImg,
 			},
 			MoveSpeed: 2,

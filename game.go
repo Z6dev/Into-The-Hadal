@@ -6,8 +6,8 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/Z6dev/Boomtown/assets"
-	"github.com/Z6dev/Boomtown/entities"
+	"github.com/Z6dev/Into-The-Hadal/assets"
+	"github.com/Z6dev/Into-The-Hadal/entities"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
@@ -137,7 +137,7 @@ func Axis(_ float64) (x, y float64) {
 }
 
 func handleCollision(g *Game) {
-	const bounceFactor = 0.5 // elasticity factor (0 = no bounce, 1 = perfect bounce)
+	const bounceFactor = 0.45 // elasticity factor (0 = no bounce, 1 = perfect bounce)
 
 	for _, c := range Collider.Collisions {
 		var impact float64
@@ -147,11 +147,12 @@ func handleCollision(g *Game) {
 			impact = math.Abs(g.player.VelY)
 			if impact > 0.5 { // threshold to avoid tiny bumps
 				if g.thudSound != nil {
-					vol := math.Min(1.0, impact/2.0) // scale speed to [0,1]
+					vol := math.Min(1.0, impact/2.0)
 					g.thudSound.SetVolume(vol)
 					g.thudSound.Rewind()
 					g.thudSound.Play()
 				}
+				g.cam.Shake(0.2, 5)
 			}
 			g.player.VelY = -g.player.VelY * bounceFactor
 			if math.Abs(g.player.VelY) < 0.05 {
@@ -162,7 +163,7 @@ func handleCollision(g *Game) {
 		// Horizontal collision Right
 		if c.Normal[0] == 1 {
 			impact = math.Abs(g.player.VelX)
-			if impact > 0.5 {
+			if impact > 0.9 {
 				if g.thudSound != nil {
 					vol := math.Min(1.0, impact/2.0)
 					g.thudSound.SetVolume(vol)
@@ -171,13 +172,15 @@ func handleCollision(g *Game) {
 				}
 				g.player.VelX = 0.4
 				g.cam.Shake(0.2, 2)
+			} else if impact <= 9 {
+				g.player.VelX = 0
 			}
 		}
 
 		// Horizontal collision Left
 		if c.Normal[0] == -1 {
 			impact = math.Abs(g.player.VelX)
-			if impact > 0.5 {
+			if impact > 0.9 {
 				if g.thudSound != nil {
 					vol := math.Min(1.0, impact/2.0)
 					g.thudSound.SetVolume(vol)
@@ -186,6 +189,8 @@ func handleCollision(g *Game) {
 				}
 				g.player.VelX = -0.4
 				g.cam.Shake(0.2, 2)
+			} else if impact <= 9 {
+				g.player.VelX = 0
 			}
 		}
 	}

@@ -1,6 +1,8 @@
 package main
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 func generateTerrain() [][]uint8 {
 	tempMap := make([][]uint8, mapWidth)
