@@ -61,7 +61,7 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{4, 158, 209, 255})
-	defer ebitenutil.DebugPrint(screen, fmt.Sprintf("%f\n%f\n%.2f", g.player.VelX, g.player.VelY, ebiten.ActualFPS()))
+	defer ebitenutil.DebugPrint(screen, fmt.Sprintf("%f\n%f\n%.2f", g.player.X, g.player.Y, ebiten.ActualFPS()))
 
 	opts := &ebiten.DrawImageOptions{}
 
@@ -145,7 +145,7 @@ func handleCollision(g *Game) {
 		// Vertical collisions
 		if c.Normal[1] != 0 {
 			impact = math.Abs(g.player.VelY)
-			if impact > 0.5 { // threshold to avoid tiny bumps
+			if impact > 1.3 { // threshold to avoid tiny bumps
 				if g.thudSound != nil {
 					vol := math.Min(1.0, impact/2.0)
 					g.thudSound.SetVolume(vol)
@@ -163,7 +163,7 @@ func handleCollision(g *Game) {
 		// Horizontal collision Right
 		if c.Normal[0] == 1 {
 			impact = math.Abs(g.player.VelX)
-			if impact > 0.9 {
+			if impact > 1.3 {
 				if g.thudSound != nil {
 					vol := math.Min(1.0, impact/2.0)
 					g.thudSound.SetVolume(vol)
@@ -180,7 +180,7 @@ func handleCollision(g *Game) {
 		// Horizontal collision Left
 		if c.Normal[0] == -1 {
 			impact = math.Abs(g.player.VelX)
-			if impact > 0.9 {
+			if impact > 1.3 {
 				if g.thudSound != nil {
 					vol := math.Min(1.0, impact/2.0)
 					g.thudSound.SetVolume(vol)

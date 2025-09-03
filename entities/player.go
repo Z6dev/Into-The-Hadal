@@ -9,64 +9,64 @@ type SubmarineController struct {
 	VelX, VelY float64
 }
 
-func (s *SubmarineController) UpdateMovement(inputX, inputY, acceleration, friction, maxSpeed float64, collider *tilecollider.Collider[uint8]) {
+func (sub *SubmarineController) UpdateMovement(inputX, inputY, acceleration, friction, maxSpeed float64, collider *tilecollider.Collider[uint8]) {
 	// Accelerate based on input
 	if inputX != 0 {
-		s.VelX += inputX * acceleration
+		sub.VelX += inputX * acceleration
 	} else {
 		// apply friction when no input
-		if s.VelX > 0 {
-			s.VelX -= friction
-			if s.VelX < 0 {
-				s.VelX = 0
+		if sub.VelX > 0 {
+			sub.VelX -= friction
+			if sub.VelX < 0 {
+				sub.VelX = 0
 			}
-		} else if s.VelX < 0 {
-			s.VelX += friction
-			if s.VelX > 0 {
-				s.VelX = 0
+		} else if sub.VelX < 0 {
+			sub.VelX += friction
+			if sub.VelX > 0 {
+				sub.VelX = 0
 			}
 		}
 	}
 
 	if inputY != 0 {
-		s.VelY += inputY * acceleration
+		sub.VelY += inputY * acceleration
 	} else {
-		if s.VelY > 0 {
-			s.VelY -= friction
-			if s.VelY < 0 {
-				s.VelY = 0
+		if sub.VelY > 0 {
+			sub.VelY -= friction
+			if sub.VelY < 0 {
+				sub.VelY = 0
 			}
-		} else if s.VelY < 0 {
-			s.VelY += friction
-			if s.VelY > 0 {
-				s.VelY = 0
+		} else if sub.VelY < 0 {
+			sub.VelY += friction
+			if sub.VelY > 0 {
+				sub.VelY = 0
 			}
 		}
 	}
 
 	// Clamp max speed
-	if s.VelX > maxSpeed {
-		s.VelX = maxSpeed
-	} else if s.VelX < -maxSpeed {
-		s.VelX = -maxSpeed
+	if sub.VelX > maxSpeed {
+		sub.VelX = maxSpeed
+	} else if sub.VelX < -maxSpeed {
+		sub.VelX = -maxSpeed
 	}
-	if s.VelY > maxSpeed {
-		s.VelY = maxSpeed
-	} else if s.VelY < -maxSpeed {
-		s.VelY = -maxSpeed
+	if sub.VelY > maxSpeed {
+		sub.VelY = maxSpeed
+	} else if sub.VelY < -maxSpeed {
+		sub.VelY = -maxSpeed
 	}
 
 	// Apply velocity through collider
 	deltaX, deltaY := collider.Collide(
-		s.X,
-		s.Y,
-		s.W,
-		s.H,
-		s.VelX,
-		s.VelY,
+		sub.X,
+		sub.Y,
+		sub.W,
+		sub.H,
+		sub.VelX,
+		sub.VelY,
 		nil,
 	)
 
-	s.X += deltaX
-	s.Y += deltaY
+	sub.X += deltaX
+	sub.Y += deltaY
 }

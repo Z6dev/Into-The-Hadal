@@ -3,6 +3,7 @@ module github.com/Z6dev/Into-The-Hadal
 go 1.24.5
 
 require (
+	github.com/aquilax/go-perlin v1.1.0
 	github.com/hajimehoshi/ebiten/v2 v2.8.6
 	github.com/setanarut/tilecollider v1.5.1
 )
