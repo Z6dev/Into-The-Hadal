@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"image/color"
+	"math/rand"
 
 	"github.com/Z6dev/Into-The-Hadal/assets"
 	"github.com/Z6dev/Into-The-Hadal/entities"
@@ -17,38 +18,52 @@ import (
 )
 
 func generateTerrain() [][]uint8 {
-	grid := make([][]uint8, mapWidth)
+	grid := make([][]uint8, mapHeight)
 	for i := range grid {
-		grid[i] = make([]uint8, mapHeight)
+		grid[i] = make([]uint8, mapWidth)
 	}
 
 	// Perlin noise parameters
 	alpha := 2.0    // persistence
 	beta := 2.0     // frequency
-	var n int32 = 3 // number of octaves
-	seed := int64(42)
+	var n int32 = 7 // number of octaves
+	var seed int64 = rand.Int63n(100)
 
 	p := perlin.NewPerlin(alpha, beta, n, seed)
 
-	for x := 0; x < mapWidth; x++ {
-		for y := 0; y < mapHeight; y++ {
-			// Scale coordinates so the noise doesn’t look too chaotic
+	for y := 0; y < mapHeight; y++ {
+		for x := 0; x < mapWidth; x++ {
 			noise := p.Noise2D(float64(x)/20.0, float64(y)/20.0)
-
-			// Normalize noise [-1,1] -> [0,1]
-			normalized := (noise + 1) / 2
-
-			// Threshold to decide solid vs empty
-			if normalized > 0.5 {
-				grid[x][y] = 1 // solid seabed
+			normalizedValue := (noise + 1) / 2
+			if normalizedValue > 0.5 {
+				grid[y][x] = 1
 			} else {
-				grid[x][y] = 0 // water/empty
+				grid[y][x] = 0
 			}
 		}
 	}
 	return grid
 }
 
+func FindSpawnPoint(tilemap [][]uint8, tileSize float64) (float64, float64, bool) {
+	rows := len(tilemap)
+	if rows == 0 {
+		return 0, 0, false
+	}
+	cols := len(tilemap[0])
+
+	for y := 0; y < rows; y++ {
+		for x := 0; x < cols-1; x++ { // -1 because player is 2 tiles wide
+			// Check if this spot (2 wide, 1 high) is empty
+			if tilemap[y][x] == 0 && tilemap[y][x+1] == 0 {
+				// Convert to world coordinates (spawn at top-left of the area)
+				return float64(x) * tileSize, float64(y) * tileSize, true
+			}
+		}
+	}
+	// No valid spawn found
+	return 0, 0, false
+}
 func PlayAudio(data []byte, ctx *audio.Context) {
 	pl, err := ctx.NewPlayer(bytes.NewReader(data))
 	if err != nil {
@@ -58,19 +73,23 @@ func PlayAudio(data []byte, ctx *audio.Context) {
 }
 
 /* ================= Main and Init ================= */
-const screenWidth, screenHeight float64 = 480, 320
-const (
-	Acceleration = 0.012 // how fast player ramp up
-	Friction     = 0.002 // how fast player slow down
 
-	mapWidth  = 400
-	mapHeight = 60
+const (
+	screenWidth  float64 = 480
+	screenHeight float64 = 320
+
+	// BEWARE, MAP WIDTH AND MAP HEIGHT IS SWAPPED.
+	// @Z6dev still doesn't know how to fix it 😭
+	mapWidth  = 800 // Map height
+	mapHeight = 800 // Map Width
 )
 
 var (
 	TileMap [][]uint8
 
 	Collider *tilecollider.Collider[uint8]
+
+	tileW, tileH int
 )
 
 func main() {
@@ -85,6 +104,13 @@ func main() {
 	TileMap = generateTerrain()
 	Collider = tilecollider.NewCollider(TileMap, 32, 32)
 
+	tileW, tileH = Collider.TileSize[0], Collider.TileSize[1]
+
+	// Init player
+	spawnX, spawnY, ok := FindSpawnPoint(TileMap, 32)
+	if !ok {
+		panic("CANNOT FIND SPAWN POINT!")
+	}
 	// GAME INIT!!!
 
 	game := &Game{
@@ -92,13 +118,15 @@ func main() {
 
 		player: &entities.SubmarineController{
 			Sprite: &entities.Sprite{
-				X:   100,
-				Y:   100,
-				W:   64,
+				X:   spawnX,
+				Y:   spawnY,
+				W:   62,
 				H:   31,
 				Img: playerImg,
 			},
-			MoveSpeed: 2,
+			MoveSpeed:    2,
+			Acceleration: 0.025,
+			Friction:     0.01,
 		},
 
 		cam:       entities.NewCamera(0, 0),

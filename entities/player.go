@@ -4,24 +4,26 @@ import "github.com/setanarut/tilecollider"
 
 type SubmarineController struct {
 	*Sprite
-	MoveSpeed float64
+	MoveSpeed    float64
+	Acceleration float64
+	Friction     float64
 
 	VelX, VelY float64
 }
 
-func (sub *SubmarineController) UpdateMovement(inputX, inputY, acceleration, friction, maxSpeed float64, collider *tilecollider.Collider[uint8]) {
+func (sub *SubmarineController) UpdateMovement(inputX, inputY float64, collider *tilecollider.Collider[uint8]) {
 	// Accelerate based on input
 	if inputX != 0 {
-		sub.VelX += inputX * acceleration
+		sub.VelX += inputX * sub.Acceleration
 	} else {
 		// apply friction when no input
 		if sub.VelX > 0 {
-			sub.VelX -= friction
+			sub.VelX -= sub.Friction
 			if sub.VelX < 0 {
 				sub.VelX = 0
 			}
 		} else if sub.VelX < 0 {
-			sub.VelX += friction
+			sub.VelX += sub.Friction
 			if sub.VelX > 0 {
 				sub.VelX = 0
 			}
@@ -29,15 +31,15 @@ func (sub *SubmarineController) UpdateMovement(inputX, inputY, acceleration, fri
 	}
 
 	if inputY != 0 {
-		sub.VelY += inputY * acceleration
+		sub.VelY += inputY * sub.Acceleration
 	} else {
 		if sub.VelY > 0 {
-			sub.VelY -= friction
+			sub.VelY -= sub.Friction
 			if sub.VelY < 0 {
 				sub.VelY = 0
 			}
 		} else if sub.VelY < 0 {
-			sub.VelY += friction
+			sub.VelY += sub.Friction
 			if sub.VelY > 0 {
 				sub.VelY = 0
 			}
@@ -45,15 +47,15 @@ func (sub *SubmarineController) UpdateMovement(inputX, inputY, acceleration, fri
 	}
 
 	// Clamp max speed
-	if sub.VelX > maxSpeed {
-		sub.VelX = maxSpeed
-	} else if sub.VelX < -maxSpeed {
-		sub.VelX = -maxSpeed
+	if sub.VelX > sub.MoveSpeed {
+		sub.VelX = sub.MoveSpeed
+	} else if sub.VelX < -sub.MoveSpeed {
+		sub.VelX = -sub.MoveSpeed
 	}
-	if sub.VelY > maxSpeed {
-		sub.VelY = maxSpeed
-	} else if sub.VelY < -maxSpeed {
-		sub.VelY = -maxSpeed
+	if sub.VelY > sub.MoveSpeed {
+		sub.VelY = sub.MoveSpeed
+	} else if sub.VelY < -sub.MoveSpeed {
+		sub.VelY = -sub.MoveSpeed
 	}
 
 	// Apply velocity through collider

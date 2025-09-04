@@ -12,10 +12,12 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type Game struct {
-	Initialized bool
+	IsInitialized, IsPaused bool
 
 	player *entities.SubmarineController
 	cam    *entities.Camera
@@ -27,31 +29,42 @@ type Game struct {
 	thudSound *audio.Player
 }
 
-func (g *Game) Update() error {
-	if !g.Initialized {
-		stream, err := mp3.DecodeWithoutResampling(bytes.NewReader(assets.MetalThud_mp3))
-		if err != nil {
-			panic(err)
-		}
-
-		g.thudSound, err = g.audioCtx.NewPlayer(stream)
-		if err != nil {
-			panic(err)
-		}
-		g.Initialized = true
+func (g *Game) Init() {
+	stream, err := mp3.DecodeWithoutResampling(bytes.NewReader(assets.MetalThud_mp3))
+	if err != nil {
+		panic(err)
 	}
+
+	g.thudSound, err = g.audioCtx.NewPlayer(stream)
+	if err != nil {
+		panic(err)
+	}
+	g.IsInitialized = true
+}
+
+func (g *Game) Update() error {
+	if !g.IsInitialized {
+		g.Init()
+	}
+
+	// Handle Pause logic here plz.
+	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
+		g.IsPaused = !g.IsPaused
+	}
+	if g.IsPaused {
+		return nil
+	}
+
+	// FINALLY, MAIN UPDATE
 	inputX, inputY := Axis(1)
 
 	g.player.UpdateMovement(
 		inputX,
 		inputY,
-		Acceleration,
-		Friction,
-		g.player.MoveSpeed,
 		Collider,
 	)
 
-	handleCollision(g)
+	g.handleCollision()
 
 	g.cam.FollowTarget(g.player.X+32.0, g.player.Y+16.0, screenWidth, screenHeight)
 	g.cam.Update(0.01666)
@@ -61,7 +74,6 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{4, 158, 209, 255})
-	defer ebitenutil.DebugPrint(screen, fmt.Sprintf("%f\n%f\n%.2f", g.player.X, g.player.Y, ebiten.ActualFPS()))
 
 	opts := &ebiten.DrawImageOptions{}
 
@@ -72,9 +84,54 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	opts.GeoM.Reset()
 
-	tileW := Collider.TileSize[0]
-	tileH := Collider.TileSize[1]
+	/* Draw Tiles */
+	g.DrawTiles(screen, opts)
 
+	// Debug Opts
+	ebitenutil.DebugPrint(
+		screen,
+		fmt.Sprintf("X: %f\nY: %f\nFPS: %f", g.player.X, g.player.Y, ebiten.ActualFPS()),
+	)
+
+	// Drawing some Lignum Pause screen, WAAAAAAAAAAAAAA
+	if g.IsPaused {
+		vector.DrawFilledRect(
+			screen,
+			0, 0,
+			float32(screenWidth), float32(screenHeight),
+			color.RGBA{30, 30, 30, 64}, false,
+		)
+		ebitenutil.DebugPrintAt(screen, "Game Is Paused...", int(screenWidth/2)-40, int(screenHeight/2))
+	}
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return int(screenWidth), int(screenHeight)
+}
+
+/*
+@Z6dev is Confused on how to organize Axis()
+blegh.
+*/
+
+/* ================= Helper functions non-game ================ */
+func Axis(_ float64) (x, y float64) {
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		y = -1
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		y = 1
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		x = -1
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		x = 1
+	}
+	return
+}
+
+func (g *Game) DrawTiles(screen *ebiten.Image, opts *ebiten.DrawImageOptions) {
 	// Compute visible bounds in tile coordinates
 	startX := int((-g.cam.X) / float64(tileW))
 	startY := int((-g.cam.Y) / float64(tileH))
@@ -108,35 +165,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
-func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return int(screenWidth), int(screenHeight)
-}
-
-/*
-@Z6dev is not happy with this code
-What is this?
-
-blegh
-*/
-
-/* ================= Helper functions non-game ================ */
-func Axis(_ float64) (x, y float64) {
-	if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		y = -1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		y = 1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		x = -1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		x = 1
-	}
-	return
-}
-
-func handleCollision(g *Game) {
+func (g *Game) handleCollision() {
 	const bounceFactor = 0.45 // elasticity factor (0 = no bounce, 1 = perfect bounce)
 
 	for _, c := range Collider.Collisions {
