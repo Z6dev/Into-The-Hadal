@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"image/color"
+	"math"
 	"math/rand"
 
 	"github.com/Z6dev/Into-The-Hadal/assets"
@@ -17,53 +18,52 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
-func generateTerrain() [][]uint8 {
-	grid := make([][]uint8, mapHeight)
-	for i := range grid {
-		grid[i] = make([]uint8, mapWidth)
-	}
+// GenerateTerrain builds a 2D terrain map using layered Perlin noise.
+// 0 = water, 1 = terrain
+func GenerateTerrain(width, height int, seed int64) [][]uint8 {
+	alpha := 2.0
+	beta := 2.0
+	octaves := 5
 
-	// Perlin noise parameters
-	alpha := 2.0    // persistence
-	beta := 2.0     // frequency
-	var n int32 = 7 // number of octaves
-	var seed int64 = rand.Int63n(100)
+	// Base noise (big caves)
+	p1 := perlin.NewPerlin(alpha, beta, int32(octaves), seed)
+	// Detail noise (smaller features)
+	p2 := perlin.NewPerlin(alpha, beta, int32(octaves), seed+42)
 
-	p := perlin.NewPerlin(alpha, beta, n, seed)
+	terrain := make([][]uint8, height)
+	for y := 0; y < height; y++ {
+		terrain[y] = make([]uint8, width)
 
-	for y := 0; y < mapHeight; y++ {
-		for x := 0; x < mapWidth; x++ {
-			noise := p.Noise2D(float64(x)/20.0, float64(y)/20.0)
-			normalizedValue := (noise + 1) / 2
-			if normalizedValue > 0.5 {
-				grid[y][x] = 1
+		depthFactor := float64(y) / float64(height)
+
+		// Adjust threshold to control density
+		// Start more solid near top, slightly emptier deep down
+		threshold := 0.20 - 0.10*depthFactor
+
+		for x := 0; x < width; x++ {
+			// Stretched coordinates
+			nx := float64(x) / 20.0 // horizontal scale
+			ny := float64(y) / 50.0 // vertical scale (smaller than before)
+
+			// Large-scale caves
+			baseNoise := math.Abs(p1.Noise2D(nx, ny))
+
+			// Smaller details (tunnels, cracks)
+			detailNoise := p2.Noise2D(nx*2.0, ny*2.0) * 0.5
+
+			// Combine them
+			noiseVal := baseNoise*0.7 + detailNoise*0.3
+
+			if noiseVal > threshold {
+				terrain[y][x] = 1
 			} else {
-				grid[y][x] = 0
+				terrain[y][x] = 0
 			}
 		}
 	}
-	return grid
+	return terrain
 }
 
-func FindSpawnPoint(tilemap [][]uint8, tileSize float64) (float64, float64, bool) {
-	rows := len(tilemap)
-	if rows == 0 {
-		return 0, 0, false
-	}
-	cols := len(tilemap[0])
-
-	for y := 0; y < rows; y++ {
-		for x := 0; x < cols-1; x++ { // -1 because player is 2 tiles wide
-			// Check if this spot (2 wide, 1 high) is empty
-			if tilemap[y][x] == 0 && tilemap[y][x+1] == 0 {
-				// Convert to world coordinates (spawn at top-left of the area)
-				return float64(x) * tileSize, float64(y) * tileSize, true
-			}
-		}
-	}
-	// No valid spawn found
-	return 0, 0, false
-}
 func PlayAudio(data []byte, ctx *audio.Context) {
 	pl, err := ctx.NewPlayer(bytes.NewReader(data))
 	if err != nil {
@@ -80,8 +80,8 @@ const (
 
 	// BEWARE, MAP WIDTH AND MAP HEIGHT IS SWAPPED.
 	// @Z6dev still doesn't know how to fix it 😭
-	mapWidth  = 800 // Map height
-	mapHeight = 800 // Map Width
+	mapWidth  int = 800 // Map height
+	mapHeight int = 800 // Map Width
 )
 
 var (
@@ -101,16 +101,13 @@ func main() {
 		panic(err)
 	}
 	// Init terrain
-	TileMap = generateTerrain()
+	TileMap = GenerateTerrain(mapWidth, mapHeight, rand.Int63n(100))
 	Collider = tilecollider.NewCollider(TileMap, 32, 32)
 
 	tileW, tileH = Collider.TileSize[0], Collider.TileSize[1]
 
 	// Init player
-	spawnX, spawnY, ok := FindSpawnPoint(TileMap, 32)
-	if !ok {
-		panic("CANNOT FIND SPAWN POINT!")
-	}
+	var spawnX, spawnY float64 = float64(mapHeight/2) * 32.0, -32.0
 	// GAME INIT!!!
 
 	game := &Game{
